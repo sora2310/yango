@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, User, Gift, UserCircle, Phone } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 
 interface SidebarProps {
   menuOpen: boolean;
@@ -8,12 +10,12 @@ interface SidebarProps {
 }
 
 /**
- * Sidebar claro con borde derecho y activo en rojo.
+ * Sidebar claro con borde derecho, activos en rojo y botón de cierre de sesión.
  */
 const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
   return (
     <aside
-      className={`bg-white text-gray-800 w-64 p-4 md:relative fixed inset-y-0 left-0 transform ${
+      className={`relative bg-white text-gray-800 w-64 p-4 md:relative fixed inset-y-0 left-0 transform ${
         menuOpen ? 'translate-x-0' : '-translate-x-full'
       } md:translate-x-0 transition-transform duration-200 ease-in-out z-40 border-r border-gray-200 shadow`}
     >
@@ -21,7 +23,8 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
         {/* Sustituye '/logo.png' por la ruta de tu logo en la carpeta public */}
         <img src="/logo.png" alt="Yango" className="h-12 w-auto" />
       </div>
-      <nav className="space-y-4">
+
+      <nav className="space-y-4 pb-20">
         <NavLink
           to="/panel"
           className={({ isActive }) =>
@@ -87,6 +90,16 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
           <span>Contáctanos</span>
         </NavLink>
       </nav>
+
+      {/* Botón Cerrar sesión fijo abajo */}
+      <div className="absolute bottom-4 left-0 right-0 px-4">
+        <button
+          onClick={() => signOut(auth)}
+          className="w-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-800 rounded px-4 py-2"
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </aside>
   );
 };
