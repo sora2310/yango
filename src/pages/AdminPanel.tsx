@@ -1,329 +1,586 @@
-import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
-import {
-  FaUsers,
-  FaGift,
-  FaFileUpload,
-  FaHistory,
-  FaCog,
-  FaEdit,
-  FaTrash
-} from 'react-icons/fa';
-import * as XLSX from 'xlsx';
-import { db, storage } from '../firebaseConfig';
+import React, { useEffect, useMemo, useState } from "react";
 import {
   collection,
   getDocs,
-  addDoc,
-  serverTimestamp,
   query,
   orderBy,
-  updateDoc,
-  deleteDoc,
-  doc as firestoreDoc,
-  getDoc,
   where,
-  DocumentData,
-  QueryDocumentSnapshot
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+  doc,
+  getDoc,
+  updateDoc,
+  setDoc,
+  serverTimestamp,
+  writeBatch,
+  increment,
+} from "firebase/firestore";
+import { ref, uploadBytes } from "firebase/storage";
+import { auth, db, storage } from "../firebaseConfig";
 
-interface Usuario {
-  id: string;
-  nombre: string;
-  telefono: string;
-  licencia: string;
-  ciudad: string;
-  puntos: number;
-}
-
-interface Recompensa {
-  id: string;
-  nombre: string;
-  puntosRequeridos: number;
-  imageURL: string;
-  limitePorUsuario: number;
-}
-
-interface UploadRecord {
-  id: string;
-  fileName: string;
-  timestamp: any;
-  uploader: string;
-  url: string;
-}
-
-const AdminPanel: React.FC = () => {
-  const sections = [
-    { key: 'usuarios', label: 'Usuarios', icon: <FaUsers /> },
-    { key: 'recompensas', label: 'Recompensas', icon: <FaGift /> },
-    { key: 'upload', label: 'Subir Puntos', icon: <FaFileUpload /> },
-    { key: 'historial', label: 'Historial', icon: <FaHistory /> },
-    { key: 'config', label: 'Configuración', icon: <FaCog /> },
-  ];
-  const [active, setActive] = useState<string>('usuarios');
-
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-
-  const [uploadRecords, setUploadRecords] = useState<UploadRecord[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
-
-  const [recompensas, setRecompensas] = useState<Recompensa[]>([]);
-  const [newRec, setNewRec] = useState<Partial<Recompensa>>({
-    nombre: '', puntosRequeridos: 0, imageURL: '', limitePorUsuario: 1
-  });
-  const [editingRecId, setEditingRecId] = useState<string | null>(null);
-  const [loadingRecs, setLoadingRecs] = useState(true);
-
-  const [themeColor, setThemeColor] = useState<string>('red');
-  const [loadingConfig, setLoadingConfig] = useState(true);
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadMessage, setUploadMessage] = useState<string>('');
-
-  useEffect(() => {
-    (async () => {
-      const snap = await getDocs(collection(db, 'usuarios'));
-      setUsuarios(snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({ id: d.id, ...(d.data() as any) })) as Usuario[]);
-      setLoadingUsers(false);
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      const q = query(collection(db, 'uploads'), orderBy('timestamp', 'desc'));
-      const snap = await getDocs(q);
-      setUploadRecords(snap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => ({ id: d.id, ...(d.data() as any) })) as UploadRecord[]);
-      setLoadingHistory(false);
-    })();
-  }, []);
-
-  const loadRecs = async () => {
-    const snap = await getDocs(collection(db, 'recompensas'));
-    setRecompensas(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Recompensa[]);
-  };
-  useEffect(() => { loadRecs().then(() => setLoadingRecs(false)); }, []);
-
-  useEffect(() => {
-    (async () => {
-      const cfgRef = firestoreDoc(db, 'config', 'general');
-      const snap = await getDoc(cfgRef);
-      if (snap.exists()) setThemeColor(snap.data().themeColor || 'red');
-      setLoadingConfig(false);
-    })();
-  }, []);
-
-  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    setSelectedFile(e.target.files?.[0] || null);
-    setUploadMessage('');
-  };
-
-  const handleFileUpload = async () => {
-    if (!selectedFile) return setUploadMessage('⚠️ Debes seleccionar un archivo primero');
-    try {
-      const data = await selectedFile.arrayBuffer();
-      const wb = XLSX.read(data, { type: 'array' });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows: any[] = XLSX.utils.sheet_to_json(sheet);
-      const missing: string[] = [];
-      let updatedCount = 0;
-      for (const row of rows) {
-        const docu = String(row.licencia);
-        const pts = Number(row.puntos);
-        if (isNaN(pts)) continue;
-        const q = query(collection(db, 'usuarios'), where('licencia', '==', docu));
-        const snapUsers = await getDocs(q);
-        if (snapUsers.empty) { missing.push(docu); continue; }
-        for (const d of snapUsers.docs) {
-          const uRef = firestoreDoc(db, 'usuarios', d.id);
-          const data: any = d.data();
-          const current = Number(data.puntos) || 0;
-          await updateDoc(uRef, { puntos: current + pts });
-          updatedCount++;
-        }
-      }
-      const storageRef = ref(storage, `uploads/${selectedFile.name}`);
-      await uploadBytes(storageRef, selectedFile);
-      const url = await getDownloadURL(storageRef);
-      await addDoc(collection(db, 'uploads'), {
-        fileName: selectedFile.name,
-        timestamp: serverTimestamp(),
-        uploader: 'admin', url
-      });
-      setUploadRecords(prev => [
-        { id: '', fileName: selectedFile.name, timestamp: new Date(), uploader: 'admin', url },
-        ...prev
-      ]);
-      setUploadMessage(`✅ ${updatedCount} usuarios actualizados.` + (missing.length ? ' No encontrados: ' + missing.join(', ') : ''));
-      setSelectedFile(null);
-    } catch (err) {
-      console.error(err);
-      setUploadMessage('❌ Error al procesar la carga.');
-    }
-  };
-
-  const handleRecChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewRec(prev => ({ ...prev, [name]: ['puntosRequeridos','limitePorUsuario'].includes(name) ? Number(value) : value }));
-  };
-
-  const handleRecSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!newRec.nombre) return;
-    try {
-      if (editingRecId) await updateDoc(firestoreDoc(db, 'recompensas', editingRecId), newRec as any);
-      else await addDoc(collection(db, 'recompensas'), newRec as any);
-    } catch (err: any) {
-      if (editingRecId && err.code === 'not-found') await addDoc(collection(db, 'recompensas'), newRec as any);
-      else {
-        console.error('Error:', err);
-        alert('Error al guardar recompensa');
-      }
-    }
-    setEditingRecId(null);
-    setNewRec({ nombre: '', puntosRequeridos: 0, imageURL: '', limitePorUsuario: 1 });
-    loadRecs();
-  };
-
-  const handleEditRec = (rec: Recompensa) => {
-    setEditingRecId(rec.id);
-    setNewRec(rec);
-  };
-
-  const handleDeleteRec = async (id: string) => {
-    if (window.confirm('¿Eliminar esta recompensa?')) {
-      await deleteDoc(firestoreDoc(db, 'recompensas', id));
-      loadRecs();
-    }
-  };
-
-  const handleConfigSave = async () => {
-    const cfgRef = firestoreDoc(db, 'config', 'general');
-    try {
-      await updateDoc(cfgRef, { themeColor });
-    } catch (err: any) {
-      if (err.code === 'not-found') {
-        await addDoc(collection(db, 'config'), { themeColor, createdAt: serverTimestamp() });
-      }
-    }
-    alert('Configuración guardada');
-  };
-
-  return (
-    <div className="flex h-screen">
-      <aside className={`w-64 bg-${themeColor}-600 text-white p-4`}>
-        {sections.map(sec => (
-          <button
-            key={sec.key}
-            onClick={() => setActive(sec.key)}
-            className={`flex items-center space-x-2 w-full p-2 mb-2 rounded ${active === sec.key ? `bg-${themeColor}-800` : ''}`}
-          >
-            {sec.icon}<span>{sec.label}</span>
-          </button>
-        ))}
-      </aside>
-      <main className="flex-1 p-6 bg-gray-100 overflow-auto">
-        {active === 'usuarios' && (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Usuarios Registrados</h2>
-            {loadingUsers ? <p>Cargando...</p> : (
-              <table className="min-w-full bg-white shadow rounded-lg overflow-hidden">
-                <thead><tr className="bg-gray-200">
-                  <th className="px-4 py-2">Nombre</th>
-                  <th className="px-4 py-2">Teléfono</th>
-                  <th className="px-4 py-2">Licencia</th>
-                  <th className="px-4 py-2">Ciudad</th>
-                  <th className="px-4 py-2">Puntos</th>
-                </tr></thead>
-                <tbody>
-                  {usuarios.map(u => (
-                    <tr key={u.id} className="border-t">
-                      <td className="px-4 py-2">{u.nombre}</td>
-                      <td className="px-4 py-2">{u.telefono}</td>
-                      <td className="px-4 py-2">{u.licencia}</td>
-                      <td className="px-4 py-2">{u.ciudad}</td>
-                      <td className="px-4 py-2">{u.puntos}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        {active === 'recompensas' && (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Gestión de Recompensas</h2>
-            <form onSubmit={handleRecSubmit} className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-              <input name="nombre" value={newRec.nombre || ''} onChange={handleRecChange} placeholder="Nombre" className="p-2 border rounded" />
-              <input name="puntosRequeridos" type="number" value={newRec.puntosRequeridos || 0} onChange={handleRecChange} placeholder="Puntos" className="p-2 border rounded" />
-              <input name="imageURL" value={newRec.imageURL || ''} onChange={handleRecChange} placeholder="Imagen URL" className="p-2 border rounded" />
-              <input name="limitePorUsuario" type="number" value={newRec.limitePorUsuario || 1} onChange={handleRecChange} placeholder="Límite por usuario" className="p-2 border rounded" />
-              <button type="submit" className="col-span-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-                {editingRecId ? 'Guardar cambios' : 'Agregar recompensa'}
-              </button>
-            </form>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recompensas.map(r => (
-                <div key={r.id} className="group bg-white p-4 rounded-lg shadow relative">
-                  <img src={r.imageURL} alt={r.nombre} className="w-full h-32 object-cover rounded" />
-                  <h3 className="mt-2 font-semibold text-lg">{r.nombre}</h3>
-                  <p>{r.puntosRequeridos} pts</p>
-                  <p>Límite: {r.limitePorUsuario}</p>
-                  <div className="absolute top-2 right-2 space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleEditRec(r)} className="text-blue-600 hover:text-blue-800"><FaEdit /></button>
-                    <button onClick={() => handleDeleteRec(r.id)} className="text-red-600 hover:text-red-800"><FaTrash /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {active === 'upload' && (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Subir Puntos por XLSX</h2>
-            <input type="file" accept=".xlsx" onChange={handleFileSelect} className="mb-4" />
-            <button onClick={handleFileUpload} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-              Confirmar Carga
-            </button>
-            {uploadMessage && <p className="mt-2 text-sm text-gray-800 whitespace-pre-line">{uploadMessage}</p>}
-          </div>
-        )}
-
-        {active === 'historial' && (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Historial de Subidas</h2>
-            {loadingHistory ? <p>Cargando...</p> : (
-              <ul className="space-y-2">
-                {uploadRecords.map(r => (
-                  <li key={r.id} className="bg-white p-3 rounded shadow">
-                    <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{r.fileName}</a>
-                    <span className="ml-2 text-gray-500">{new Date((r.timestamp?.seconds || 0) * 1000).toLocaleString()}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {active === 'config' && (
-          <div>
-            <h2 className="text-xl font-bold mb-4">Configuración</h2>
-            {loadingConfig ? <p>Cargando...</p> : (
-              <div className="space-y-4">
-                <label className="block">
-                  Color tema:
-                  <input value={themeColor} onChange={e => setThemeColor(e.target.value)} className="ml-2 p-1 border rounded" />
-                </label>
-                <button onClick={handleConfigSave} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Guardar</button>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-    </div>
-  );
+/* ──────────────────────────────────────────────────────────────
+   Tipos
+────────────────────────────────────────────────────────────── */
+type Driver = {
+  id: string;       // uid
+  nombre?: string;
+  apellido?: string;
+  telefono?: string;
+  direccion?: string;
+  email?: string;
+  avatarUrl?: string;
+  licencia?: string;       // o numeroLicencia
+  puntos?: number;
 };
 
-export default AdminPanel;
+type UploadRow = {
+  licencia: string;
+  puntos: number;
+  error?: string;
+};
+
+type UploadLog = {
+  id: string;
+  filename: string;
+  size: number;
+  uploadedAt: any;
+  processedAt?: any;
+  byUid: string;
+  byEmail: string;
+  total: number;
+  ok: number;
+  fail: number;
+};
+
+/* ──────────────────────────────────────────────────────────────
+   Helpers UI
+────────────────────────────────────────────────────────────── */
+function Toast({
+  message,
+  type = "success",
+  onClose,
+}: {
+  message: string;
+  type?: "success" | "error" | "info";
+  onClose: () => void;
+}) {
+  const color =
+    type === "success"
+      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+      : type === "error"
+      ? "bg-red-50 border-red-200 text-red-800"
+      : "bg-blue-50 border-blue-200 text-blue-800";
+
+  useEffect(() => {
+    const t = setTimeout(onClose, 2500);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 border rounded-lg px-4 py-3 shadow ${color}`}>
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
+
+function Modal({
+  open,
+  title,
+  children,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-50 w-full max-w-lg bg-white rounded-xl shadow border border-gray-200 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold">{title}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Página
+────────────────────────────────────────────────────────────── */
+export default function AdminPanel() {
+  const [tab, setTab] = useState<"drivers" | "upload" | "history">("drivers");
+  const [toast, setToast] = useState<{msg: string; type?: "success" | "error" | "info"}|null>(null);
+
+  /* DRIVERS */
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState(true);
+  const [qText, setQText] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState<Driver | null>(null);
+  const [editDeltaPts, setEditDeltaPts] = useState(0);
+
+  /* UPLOAD */
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<UploadRow[]>([]);
+  const [parsing, setParsing] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  /* HISTORY */
+  const [logs, setLogs] = useState<UploadLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+
+  const adminEmail = auth.currentUser?.email || "admin@yango.app";
+  const adminUid = auth.currentUser?.uid || "unknown";
+
+  /* ── Cargar conductores ── */
+  const loadDrivers = async () => {
+    setLoadingDrivers(true);
+    const qCol = query(collection(db, "usuarios"), orderBy("nombre", "asc"));
+    const snap = await getDocs(qCol);
+    setDrivers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Driver[]);
+    setLoadingDrivers(false);
+  };
+
+  /* ── Cargar historial ── */
+  const loadLogs = async () => {
+    setLoadingLogs(true);
+    const ql = query(collection(db, "uploads"), orderBy("uploadedAt", "desc"));
+    const snap = await getDocs(ql);
+    setLogs(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as UploadLog[]);
+    setLoadingLogs(false);
+  };
+
+  useEffect(() => {
+    loadDrivers();
+    loadLogs();
+  }, []);
+
+  /* ── Filtro conductores ── */
+  const filteredDrivers = useMemo(() => {
+    const q = qText.trim().toLowerCase();
+    if (!q) return drivers;
+    return drivers.filter((d) => {
+      return (
+        d.nombre?.toLowerCase().includes(q) ||
+        d.apellido?.toLowerCase().includes(q) ||
+        d.email?.toLowerCase().includes(q) ||
+        d.telefono?.toLowerCase().includes(q) ||
+        d.licencia?.toLowerCase().includes(q) ||
+        (d as any).numeroLicencia?.toLowerCase?.().includes(q)
+      );
+    });
+  }, [qText, drivers]);
+
+  /* ── Abrir edición ── */
+  const openEdit = (d: Driver) => {
+    setEditing(d);
+    setEditDeltaPts(0);
+    setEditOpen(true);
+  };
+
+  /* ── Guardar cambios de conductor ── */
+  const saveDriver = async () => {
+    if (!editing) return;
+    const refU = doc(db, "usuarios", editing.id);
+    const payload: any = {
+      nombre: editing.nombre || "",
+      apellido: editing.apellido || "",
+      telefono: editing.telefono || "",
+      direccion: editing.direccion || "",
+      avatarUrl: editing.avatarUrl || "",
+      licencia: editing.licencia || (editing as any).numeroLicencia || "",
+    };
+    if (editDeltaPts !== 0) payload.puntos = increment(editDeltaPts);
+
+    await updateDoc(refU, payload);
+    setToast({ msg: "Conductor actualizado", type: "success" });
+    setEditOpen(false);
+    // refresca fila
+    const docSnap = await getDoc(refU);
+    setDrivers((prev) =>
+      prev.map((x) => (x.id === editing.id ? ({ id: editing.id, ...(docSnap.data() as any) } as Driver) : x))
+    );
+  };
+
+  /* ── Parser CSV: licencia,puntos ── */
+  const parseCSV = async () => {
+    if (!file) return;
+    setParsing(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+      const rows: UploadRow[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Encabezado opcional
+        if (i === 0 && /licencia/i.test(line) && /punto/i.test(line)) continue;
+
+        const parts = line.split(",").map((p) => p.trim());
+        if (parts.length < 2) {
+          rows.push({ licencia: "", puntos: 0, error: "Fila inválida" });
+          continue;
+        }
+        const licencia = parts[0];
+        const puntos = Number(parts[1]);
+        if (!licencia || isNaN(puntos)) {
+          rows.push({ licencia, puntos: 0, error: "Datos inválidos" });
+          continue;
+        }
+        rows.push({ licencia, puntos });
+      }
+      setPreview(rows);
+      setToast({ msg: `Leídas ${rows.length} filas`, type: "info" });
+    } catch (e: any) {
+      setToast({ msg: e?.message ?? "Error leyendo CSV", type: "error" });
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  /* ── Helper: buscar usuario por licencia ── */
+  const findUserByLicencia = async (lic: string) => {
+    let q1 = query(collection(db, "usuarios"), where("licencia", "==", lic));
+    let s1 = await getDocs(q1);
+    if (!s1.empty) return s1.docs[0];
+
+    let q2 = query(collection(db, "usuarios"), where("numeroLicencia", "==", lic));
+    let s2 = await getDocs(q2);
+    if (!s2.empty) return s2.docs[0];
+
+    return null;
+  };
+
+  /* ── Procesar carga de puntos ── */
+  const processUpload = async () => {
+    if (!file || preview.length === 0) return;
+    setProcessing(true);
+    try {
+      // 1) Sube el archivo a Storage
+      const storageRef = ref(storage, `uploads/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+
+      // 2) Crea log inicial
+      const logRef = doc(collection(db, "uploads"));
+      await setDoc(logRef, {
+        filename: file.name,
+        size: file.size,
+        uploadedAt: serverTimestamp(),
+        byUid: adminUid,
+        byEmail: adminEmail,
+        total: preview.length,
+        ok: 0,
+        fail: 0,
+      });
+
+      // 3) Aplica puntos por lotes
+      let ok = 0;
+      let fail = 0;
+
+      const chunkSize = 350; // batch seguro
+      for (let i = 0; i < preview.length; i += chunkSize) {
+        const slice = preview.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+
+        for (const row of slice) {
+          try {
+            if (row.error) { fail++; continue; }
+            const udoc = await findUserByLicencia(row.licencia);
+            if (!udoc) { fail++; continue; }
+            batch.update(doc(db, "usuarios", udoc.id), { puntos: increment(row.puntos) });
+            ok++;
+          } catch {
+            fail++;
+          }
+        }
+        await batch.commit();
+      }
+
+      // 4) Finaliza log
+      await updateDoc(logRef, { processedAt: serverTimestamp(), ok, fail });
+
+      setToast({ msg: `Carga completada. OK: ${ok}, Fallidos: ${fail}`, type: "success" });
+      setFile(null);
+      setPreview([]);
+      loadDrivers();
+      loadLogs();
+    } catch (e: any) {
+      setToast({ msg: e?.message ?? "Error procesando carga", type: "error" });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  /* ──────────────────────────────────────────────────────────── */
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 p-6">
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+
+      <div className="max-w-7xl mx-auto space-y-8">
+        <header className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Panel de administración</h1>
+          <div className="p-1 rounded-full border border-gray-200 bg-white text-sm">
+            <button
+              onClick={() => setTab("drivers")}
+              className={`px-3 py-1.5 rounded-full ${tab === "drivers" ? "bg-red-600 text-white" : "hover:bg-gray-100"}`}
+            >
+              Conductores
+            </button>
+            <button
+              onClick={() => setTab("upload")}
+              className={`px-3 py-1.5 rounded-full ${tab === "upload" ? "bg-red-600 text-white" : "hover:bg-gray-100"}`}
+            >
+              Carga de puntos
+            </button>
+            <button
+              onClick={() => setTab("history")}
+              className={`px-3 py-1.5 rounded-full ${tab === "history" ? "bg-red-600 text-white" : "hover:bg-gray-100"}`}
+            >
+              Historial
+            </button>
+          </div>
+        </header>
+
+        {/* ── DRIVERS ─────────────────────────────────────────────── */}
+        {tab === "drivers" && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Conductores registrados</h2>
+              <input
+                placeholder="Buscar por nombre, correo, teléfono o licencia…"
+                className="border border-gray-300 rounded px-3 py-2 w-80"
+                value={qText}
+                onChange={(e) => setQText(e.target.value)}
+              />
+            </div>
+
+            {loadingDrivers ? (
+              <p className="text-gray-500">Cargando…</p>
+            ) : (
+              <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl shadow">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="py-2 px-3">Avatar</th>
+                      <th className="py-2 px-3">Nombre</th>
+                      <th className="py-2 px-3">Email</th>
+                      <th className="py-2 px-3">Teléfono</th>
+                      <th className="py-2 px-3">Licencia</th>
+                      <th className="py-2 px-3">Puntos</th>
+                      <th className="py-2 px-3">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDrivers.map((d) => (
+                      <tr key={d.id} className="border-b last:border-0">
+                        <td className="py-2 px-3">
+                          {d.avatarUrl ? (
+                            <img src={d.avatarUrl} className="w-10 h-10 rounded-full object-cover border" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-200" />
+                          )}
+                        </td>
+                        <td className="py-2 px-3">{[d.nombre, d.apellido].filter(Boolean).join(" ") || "—"}</td>
+                        <td className="py-2 px-3">{d.email || "—"}</td>
+                        <td className="py-2 px-3">{d.telefono || "—"}</td>
+                        <td className="py-2 px-3">{d.licencia || (d as any).numeroLicencia || "—"}</td>
+                        <td className="py-2 px-3">{d.puntos ?? 0}</td>
+                        <td className="py-2 px-3">
+                          <button
+                            className="px-3 py-1 rounded border border-gray-200 hover:bg-gray-100 transition"
+                            onClick={() => openEdit(d)}
+                          >
+                            Editar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Modal edición */}
+            <Modal open={editOpen} title="Editar conductor" onClose={() => setEditOpen(false)}>
+              {editing && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      placeholder="Nombre"
+                      className="border border-gray-300 rounded px-3 py-2"
+                      value={editing.nombre || ""}
+                      onChange={(e) => setEditing({ ...editing, nombre: e.target.value })}
+                    />
+                    <input
+                      placeholder="Apellido"
+                      className="border border-gray-300 rounded px-3 py-2"
+                      value={editing.apellido || ""}
+                      onChange={(e) => setEditing({ ...editing, apellido: e.target.value })}
+                    />
+                    <input
+                      placeholder="Teléfono"
+                      className="border border-gray-300 rounded px-3 py-2"
+                      value={editing.telefono || ""}
+                      onChange={(e) => setEditing({ ...editing, telefono: e.target.value })}
+                    />
+                    <input
+                      placeholder="Dirección"
+                      className="border border-gray-300 rounded px-3 py-2"
+                      value={editing.direccion || ""}
+                      onChange={(e) => setEditing({ ...editing, direccion: e.target.value })}
+                    />
+                    <input
+                      placeholder="Licencia"
+                      className="border border-gray-300 rounded px-3 py-2"
+                      value={editing.licencia || (editing as any).numeroLicencia || ""}
+                      onChange={(e) => setEditing({ ...editing, licencia: e.target.value })}
+                    />
+                    <input
+                      placeholder="Avatar URL"
+                      className="border border-gray-300 rounded px-3 py-2"
+                      value={editing.avatarUrl || ""}
+                      onChange={(e) => setEditing({ ...editing, avatarUrl: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <label className="text-sm text-gray-600">Ajustar puntos (+ / -)</label>
+                    <input
+                      type="number"
+                      className="border border-gray-300 rounded px-3 py-2 w-32"
+                      value={editDeltaPts}
+                      onChange={(e) => setEditDeltaPts(Number(e.target.value))}
+                    />
+                    <span className="text-xs text-gray-500">Usa números negativos para restar.</span>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      onClick={saveDriver}
+                      className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 transition"
+                    >
+                      Guardar
+                    </button>
+                    <button
+                      onClick={() => setEditOpen(false)}
+                      className="px-4 py-2 rounded border border-gray-200 hover:bg-gray-100 transition"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Modal>
+          </section>
+        )}
+
+        {/* ── UPLOAD ─────────────────────────────────────────────── */}
+        {tab === "upload" && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">Carga de puntos (CSV por licencia)</h2>
+            <div className="bg-white border border-gray-200 rounded-xl shadow p-5 space-y-3">
+              <p className="text-sm text-gray-600">
+                Formato: <code>licencia,puntos</code>. Puedes incluir una primera fila de encabezado.
+              </p>
+              <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+                <input type="file" accept=".csv,text/csv" onChange={(e)=>setFile(e.target.files?.[0] || null)} />
+                <button
+                  onClick={parseCSV}
+                  disabled={!file || parsing}
+                  className="px-3 py-2 rounded border border-gray-200 hover:bg-gray-100 transition disabled:opacity-50"
+                >
+                  {parsing ? "Leyendo…" : "Vista previa"}
+                </button>
+                <button
+                  onClick={processUpload}
+                  disabled={!file || preview.length===0 || processing}
+                  className="px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700 transition disabled:opacity-50"
+                >
+                  {processing ? "Procesando…" : "Subir y procesar"}
+                </button>
+              </div>
+
+              {preview.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2">Vista previa ({preview.length} filas)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-500 border-b">
+                          <th className="py-2 pr-3">Licencia</th>
+                          <th className="py-2 pr-3">Puntos</th>
+                          <th className="py-2 pr-3">Error</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {preview.slice(0, 20).map((r, i) => (
+                          <tr key={i} className="border-b last:border-0">
+                            <td className="py-2 pr-3">{r.licencia}</td>
+                            <td className="py-2 pr-3">{r.puntos}</td>
+                            <td className="py-2 pr-3 text-red-600">{r.error || ""}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {preview.length > 20 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Mostrando primeras 20 filas de {preview.length}.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── HISTORY ───────────────────────────────────────────── */}
+        {tab === "history" && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold">Historial de cargas</h2>
+
+            {loadingLogs ? (
+              <p className="text-gray-500">Cargando…</p>
+            ) : logs.length === 0 ? (
+              <p className="text-gray-500">Aún no hay cargas registradas.</p>
+            ) : (
+              <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl shadow">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b">
+                      <th className="py-2 px-3">Archivo</th>
+                      <th className="py-2 px-3">Tamaño</th>
+                      <th className="py-2 px-3">Total</th>
+                      <th className="py-2 px-3">OK</th>
+                      <th className="py-2 px-3">Fallidos</th>
+                      <th className="py-2 px-3">Subido por</th>
+                      <th className="py-2 px-3">Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((l) => (
+                      <tr key={l.id} className="border-b last:border-0">
+                        <td className="py-2 px-3">{l.filename}</td>
+                        <td className="py-2 px-3">{Math.round(l.size/1024)} KB</td>
+                        <td className="py-2 px-3">{l.total}</td>
+                        <td className="py-2 px-3 text-emerald-700">{l.ok}</td>
+                        <td className="py-2 px-3 text-red-600">{l.fail}</td>
+                        <td className="py-2 px-3">{l.byEmail}</td>
+                        <td className="py-2 px-3">
+                          {l.uploadedAt?.toDate ? l.uploadedAt.toDate().toLocaleString() : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}

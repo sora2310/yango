@@ -1,100 +1,88 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Panel from './pages/Panel';
-import AdminPanel from './pages/AdminPanel';
-import MiCuenta from './pages/MiCuenta';
-import PuntosCambio from './pages/PuntosCambio';
-import Contacto from './pages/Contacto';
-import { auth, db } from './firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from './firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
-function App() {
-  const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import Panel from './pages/Panel';
+import PuntosCambio from './pages/PuntosCambio';
+import MiCuenta from './pages/MiCuenta';
+import AdminPanel from './pages/AdminPanel';
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        const docRef = doc(db, 'usuarios', currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUser({ uid: currentUser.uid, ...docSnap.data() });
-        } else {
-          setUser(null);
+type Role = 'admin' | 'driver' | null;
+
+export default function App() {
+  const [user, setUser] = React.useState<any>(null);
+  const [role, setRole] = React.useState<Role>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u?.uid) {
+        localStorage.setItem('uid', u.uid);
+        // 1) intenta leer rol desde Firestore
+        try {
+          const snap = await getDoc(doc(db, 'usuarios', u.uid));
+          const r = (snap.exists() ? (snap.data() as any).rol : null) as Role;
+          setRole(r || (localStorage.getItem('rol') as Role) || 'driver');
+          if (r) localStorage.setItem('rol', r);
+        } catch {
+          setRole((localStorage.getItem('rol') as Role) || 'driver');
         }
       } else {
-        setUser(null);
+        localStorage.removeItem('uid');
+        localStorage.removeItem('rol');
+        setRole(null);
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
 
   if (loading) {
-    return <div>Cargando...</div>;
+    return <div className="grid place-items-center min-h-screen text-gray-600">Cargando…</div>;
   }
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* Entry point: show Login or redirect based on role */}
-        <Route
-          path="/"
-          element={
-            !user ? (
-              <Login />
-            ) : user.rol === 'admin' ? (
-              <Navigate to="/panelAdmin" replace />
-            ) : (
-              <Navigate to="/panel" replace />
-            )
-          }
-        />
-        {/* Register only for unauthenticated */}
-        <Route
-          path="/register"
-          element={!user ? <Register /> : <Navigate to="/" replace />}
-        />
-        {/* Conductor routes */}
-        <Route
-          path="/panel"
-          element={
-            user && user.rol === 'conductor' ? <Panel /> : <Navigate to="/" replace />
-          }
-        />
-        <Route
-          path="/mi-cuenta"
-          element={
-            user && user.rol === 'conductor' ? <MiCuenta /> : <Navigate to="/" replace />
-          }
-        />
-        <Route
-          path="/puntos-cambio"
-          element={
-            user && user.rol === 'conductor' ? <PuntosCambio /> : <Navigate to="/" replace />
-          }
-        />
-        <Route
-          path="/contacto"
-          element={
-            user && user.rol === 'conductor' ? <Contacto /> : <Navigate to="/" replace />
-          }
-        />
-        {/* Admin route */}
-        <Route
-          path="/panelAdmin"
-          element={
-            user && user.rol === 'admin' ? <AdminPanel /> : <Navigate to="/" replace />
-          }
-        />
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Públicas */}
+        {!user && (
+          <>
+            <Route path="/" element={<Login />} />
+            <Route path="/forgot" element={<ForgotPassword />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </>
+        )}
+
+        {/* Privadas */}
+        {user && (
+          <>
+            {/* Home por rol */}
+            <Route
+              path="/"
+              element={<Navigate to={role === 'admin' ? '/admin' : '/panel'} replace />}
+            />
+
+            {/* Solo admin */}
+            <Route
+              path="/admin"
+              element={role === 'admin' ? <AdminPanel /> : <Navigate to="/panel" replace />}
+            />
+
+            {/* Solo driver (o admin si quieres permitir ver el panel de conductor) */}
+            <Route path="/panel" element={<Panel />} />
+            <Route path="/puntos-cambio" element={<PuntosCambio />} />
+            <Route path="/mi-cuenta" element={<MiCuenta />} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to={role === 'admin' ? '/admin' : '/panel'} replace />} />
+          </>
+        )}
       </Routes>
     </BrowserRouter>
   );
 }
-
-export default App;
