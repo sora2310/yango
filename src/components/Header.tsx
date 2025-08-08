@@ -10,9 +10,7 @@ interface HeaderProps {
 }
 
 /**
- * Header renders the top navigation bar used across pages. It contains
- * a burger menu for mobile, the Yango brand name and a logout
- * button that signs the user out using Firebase auth.
+ * Header claro con borde inferior y marca en rojo.
  */
 const Header: React.FC<HeaderProps> = ({ menuOpen, setMenuOpen }) => {
   const navigate = useNavigate();
@@ -25,12 +23,12 @@ const Header: React.FC<HeaderProps> = ({ menuOpen, setMenuOpen }) => {
   };
 
   return (
-    <header className="flex items-center justify-between bg-black text-white px-4 py-3 shadow-md">
+    <header className="flex items-center justify-between bg-white text-gray-800 px-4 py-3 shadow-md border-b border-gray-200">
       <button className="md:hidden focus:outline-none" onClick={() => setMenuOpen(!menuOpen)}>
         <Menu size={24} />
       </button>
       <div className="flex-1 flex justify-center md:justify-start">
-        <h1 className="text-xl font-bold">Yango</h1>
+        <h1 className="text-xl font-bold text-red-600">Yango</h1>
       </div>
       <button
         onClick={handleLogout}

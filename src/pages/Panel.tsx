@@ -64,15 +64,16 @@ const Panel: React.FC = () => {
     await updateDoc(uRef, { puntos: puntos - rec.puntosRequeridos });
     setUsuarioData(prev => ({ ...prev, puntos: prev.puntos - rec.puntosRequeridos }));
     // Record redemption
-    await addDoc(collection(db, 'usuarios', user.uid, 'canjes'), { recompensaId: rec.id, timestamp: serverTimestamp() });
+    await addDoc(collection(db, 'usuarios', user.uid, 'canjes'), { 
+      recompensaId: rec.id, timestamp: serverTimestamp() });
     setHistorialCanje(prev => [...prev, rec.id]);
     alert(`Has canjeado: ${rec.nombre}`);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-red-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-red-600 text-white p-4 flex items-center justify-between">
+      <header className="bg-white text-gray-800 p-4 flex items-center justify-between border-b border-gray-200 shadow-sm">
         <div className="flex items-center space-x-3">
           <FaUserCircle size={32} />
           <div>
@@ -92,7 +93,7 @@ const Panel: React.FC = () => {
             const yaCanjeada = historialCanje.includes(rec.id);
             const puede = usuarioData.puntos >= rec.puntosRequeridos && !yaCanjeada;
             return (
-              <div key={rec.id} className="bg-white rounded-lg shadow group relative overflow-hidden">
+              <div key={rec.id} className="bg-white rounded-lg shadow group relative overflow-hidden border border-gray-200">
                 <img src={rec.imageURL} alt={rec.nombre} className="w-full h-40 object-cover" />
                 <div className="p-4">
                   <h3 className="font-semibold text-lg">{rec.nombre}</h3>
@@ -101,9 +102,9 @@ const Panel: React.FC = () => {
                 <button
                   disabled={!puede}
                   onClick={() => canjear(rec)}
-                  className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-white $
-                    ${puede ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-400 cursor-not-allowed'}
-                  `}
+                  className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full text-white ${
+                    puede ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-400 cursor-not-allowed'
+                  }`}
                 >
                   {yaCanjeada ? 'Canjeada' : 'Canjear'}
                 </button>

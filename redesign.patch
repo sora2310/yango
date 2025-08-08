@@ -1,0 +1,226 @@
+diff --git a/src/components/Header.tsx b/src/components/Header.tsx
+index 56c2ae3..14b3d0d 100644
+--- a/src/components/Header.tsx
++++ b/src/components/Header.tsx
+@@ -24,14 +24,16 @@ const Header: React.FC<HeaderProps> = ({ menuOpen, setMenuOpen }) => {
+     navigate('/');
+   };
+
+-  return (
+-    <header className="flex items-center justify-between bg-black text-white px-4 py-3 shadow-md">
++    return (
++        // Use a light background and dark text for a cleaner look. Add a border on the bottom to separate the header.
++        <header className="flex items-center justify-between bg-white text-gray-800 px-4 py-3 shadow-md border-b border-gray-200">
+       <button className="md:hidden focus:outline-none" onClick={() => setMenuOpen(!menuOpen)}>
+         <Menu size={24} />
+       </button>
+-      <div className="flex-1 flex justify-center md:justify-start">
+-        <h1 className="text-xl font-bold">Yango</h1>
+-      </div>
++          <div className="flex-1 flex justify-center md:justify-start">
++            {/* Brand name colored to match the primary accent */}
++            <h1 className="text-xl font-bold text-red-600">Yango</h1>
++          </div>
+       <button
+         onClick={handleLogout}
+         className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+diff --git a/src/components/Sidebar.tsx b/src/components/Sidebar.tsx
+index 067cc3a..4806071 100644
+--- a/src/components/Sidebar.tsx
++++ b/src/components/Sidebar.tsx
+@@ -16,9 +16,9 @@ interface SidebarProps {
+ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
+   return (
+     <aside
+-      className={`bg-black text-white w-64 p-4 md:relative fixed inset-y-0 left-0 transform ${
++      className={`bg-white text-gray-800 w-64 p-4 md:relative fixed inset-y-0 left-0 transform ${
+         menuOpen ? 'translate-x-0' : '-translate-x-full'
+-      } md:translate-x-0 transition-transform duration-200 ease-in-out z-40`}
++      } md:translate-x-0 transition-transform duration-200 ease-in-out z-40 border-r border-gray-200 shadow`}
+     >
+       <div className="mb-8 flex justify-center">
+         {/* Sustituye '/logo.png' por la ruta de tu logo en la carpeta public */}
+@@ -28,10 +28,10 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
+         <NavLink
+           to="/panel"
+           className={({ isActive }) =>
+-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
+-              isActive ? 'text-red-500' : ''
+-            }`
+-          }
++                `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
++                  isActive ? 'text-red-600 font-medium' : ''
++                }`
++              }
+           onClick={() => setMenuOpen(false)}
+         >
+           <Home size={20} />
+@@ -40,10 +40,10 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
+         <NavLink
+           to="/panel"
+           className={({ isActive }) =>
+-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
+-              isActive ? 'text-red-500' : ''
+-            }`
+-          }
++                `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
++                  isActive ? 'text-red-600 font-medium' : ''
++                }`
++              }
+           onClick={() => setMenuOpen(false)}
+         >
+           <User size={20} />
+@@ -52,10 +52,10 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
+         <NavLink
+           to="/puntos-cambio"
+           className={({ isActive }) =>
+-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
+-              isActive ? 'text-red-500' : ''
+-            }`
+-          }
++                `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
++                  isActive ? 'text-red-600 font-medium' : ''
++                }`
++              }
+           onClick={() => setMenuOpen(false)}
+         >
+           <Gift size={20} />
+@@ -64,10 +64,10 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
+         <NavLink
+           to="/mi-cuenta"
+           className={({ isActive }) =>
+-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
+-              isActive ? 'text-red-500' : ''
+-            }`
+-          }
++                `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
++                  isActive ? 'text-red-600 font-medium' : ''
++                }`
++              }
+           onClick={() => setMenuOpen(false)}
+         >
+           <UserCircle size={20} />
+@@ -76,10 +76,10 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
+         <NavLink
+           to="/contacto"
+           className={({ isActive }) =>
+-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
+-              isActive ? 'text-red-500' : ''
+-            }`
+-          }
++                `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
++                  isActive ? 'text-red-600 font-medium' : ''
++                }`
++              }
+           onClick={() => setMenuOpen(false)}
+         >
+           <Phone size={20} />
+diff --git a/src/pages/MiCuenta.tsx b/src/pages/MiCuenta.tsx
+index e3df08f..0e91748 100644
+--- a/src/pages/MiCuenta.tsx
++++ b/src/pages/MiCuenta.tsx
+@@ -52,7 +52,8 @@ function MiCuenta() {
+   };
+
+   return (
+-    <div className="flex min-h-screen bg-gray-900 text-white">
++    // Switch to a light theme for the account page
++    <div className="flex min-h-screen bg-gray-50 text-gray-800">
+       <Sidebar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+       <div className="flex-1">
+         <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+@@ -65,7 +66,7 @@ function MiCuenta() {
+               placeholder="Nombre"
+               value={formData.nombre}
+               onChange={handleInputChange}
+-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
++              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
+               required
+             />
+             <input
+@@ -74,7 +75,7 @@ function MiCuenta() {
+               placeholder="Apellido"
+               value={formData.apellido}
+               onChange={handleInputChange}
+-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
++              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
+               required
+             />
+             <input
+@@ -83,7 +84,7 @@ function MiCuenta() {
+               placeholder="Teléfono"
+               value={formData.telefono}
+               onChange={handleInputChange}
+-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
++              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
+               required
+             />
+             <input
+@@ -92,7 +93,7 @@ function MiCuenta() {
+               placeholder="Dirección"
+               value={formData.direccion}
+               onChange={handleInputChange}
+-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
++              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
+               required
+             />
+             <input
+@@ -101,7 +102,7 @@ function MiCuenta() {
+               placeholder="Email"
+               value={formData.email}
+               onChange={handleInputChange}
+-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
++              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
+               required
+             />
+             <button
+diff --git a/src/pages/Panel.tsx b/src/pages/Panel.tsx
+index 0a4729a..9749f50 100644
+--- a/src/pages/Panel.tsx
++++ b/src/pages/Panel.tsx
+@@ -70,9 +70,11 @@ const Panel: React.FC = () => {
+   };
+
+   return (
+-    <div className="flex flex-col h-screen bg-red-50">
++    // Use a light background and allow the page to extend beyond the viewport height
++    <div className="flex flex-col min-h-screen bg-gray-50">
+       {/* Header */}
+-      <header className="bg-red-600 text-white p-4 flex items-center justify-between">
++      {/* Light header with dark text and subtle border */}
++      <header className="bg-white text-gray-800 p-4 flex items-center justify-between border-b border-gray-200 shadow-sm">
+         <div className="flex items-center space-x-3">
+           <FaUserCircle size={32} />
+           <div>
+diff --git a/src/pages/PuntosCambio.tsx b/src/pages/PuntosCambio.tsx
+index 0d47faf..6a65121 100644
+--- a/src/pages/PuntosCambio.tsx
++++ b/src/pages/PuntosCambio.tsx
+@@ -63,7 +63,8 @@ function PuntosCambio() {
+   }, []);
+
+   return (
+-    <div className="flex min-h-screen bg-gray-900 text-white">
++    // Use a light background and dark text for a more welcoming interface
++    <div className="flex min-h-screen bg-gray-50 text-gray-800">
+       <Sidebar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+       <div className="flex-1">
+         <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+@@ -79,8 +80,8 @@ function PuntosCambio() {
+               <div
+                 key={reward.id}
+-                className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col items-center shadow-md"
++                className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center shadow-md"
+               >
+                 <img src={reward.imgUrl} alt={reward.titulo} className="w-24 h-24 object-contain mb-2" />
+                 <h3 className="text-lg font-semibold mb-1 text-center">{reward.titulo}</h3>
+                 <p className="text-sm text-center mb-2">{reward.descripcion}</p>
+                 <p className="mb-2">Puntos requeridos: {reward.puntos}</p>
+                 {totalPoints >= reward.puntos ? (
+                   <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Reclamar</button>
+                 ) : (
+-                  <button className="bg-gray-500 text-white px-4 py-2 rounded" disabled>
++                  <button className="bg-gray-300 text-gray-600 px-4 py-2 rounded" disabled>
+                     Insuficientes
+                   </button>
+                 )}

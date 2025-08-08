@@ -8,17 +8,14 @@ interface SidebarProps {
 }
 
 /**
- * Sidebar renders the left navigation menu for drivers. It collapses on
- * mobile and uses NavLink to highlight the active route. A logo
- * placeholder is included at the top — replace `/logo.png` with
- * your actual logo path in the public folder.
+ * Sidebar claro con borde derecho y activo en rojo.
  */
 const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
   return (
     <aside
-      className={`bg-black text-white w-64 p-4 md:relative fixed inset-y-0 left-0 transform ${
+      className={`bg-white text-gray-800 w-64 p-4 md:relative fixed inset-y-0 left-0 transform ${
         menuOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:translate-x-0 transition-transform duration-200 ease-in-out z-40`}
+      } md:translate-x-0 transition-transform duration-200 ease-in-out z-40 border-r border-gray-200 shadow`}
     >
       <div className="mb-8 flex justify-center">
         {/* Sustituye '/logo.png' por la ruta de tu logo en la carpeta public */}
@@ -28,8 +25,8 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
         <NavLink
           to="/panel"
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
-              isActive ? 'text-red-500' : ''
+            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
+              isActive ? 'text-red-600 font-medium' : ''
             }`
           }
           onClick={() => setMenuOpen(false)}
@@ -37,11 +34,12 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
           <Home size={20} />
           <span>Home</span>
         </NavLink>
+
         <NavLink
           to="/panel"
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
-              isActive ? 'text-red-500' : ''
+            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
+              isActive ? 'text-red-600 font-medium' : ''
             }`
           }
           onClick={() => setMenuOpen(false)}
@@ -49,11 +47,12 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
           <User size={20} />
           <span>Conductor</span>
         </NavLink>
+
         <NavLink
           to="/puntos-cambio"
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
-              isActive ? 'text-red-500' : ''
+            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
+              isActive ? 'text-red-600 font-medium' : ''
             }`
           }
           onClick={() => setMenuOpen(false)}
@@ -61,11 +60,12 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
           <Gift size={20} />
           <span>Puntos y Cambio</span>
         </NavLink>
+
         <NavLink
           to="/mi-cuenta"
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
-              isActive ? 'text-red-500' : ''
+            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
+              isActive ? 'text-red-600 font-medium' : ''
             }`
           }
           onClick={() => setMenuOpen(false)}
@@ -73,11 +73,12 @@ const Sidebar: React.FC<SidebarProps> = ({ menuOpen, setMenuOpen }) => {
           <UserCircle size={20} />
           <span>Mi Cuenta</span>
         </NavLink>
+
         <NavLink
           to="/contacto"
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-500 ${
-              isActive ? 'text-red-500' : ''
+            `flex items-center space-x-3 px-2 py-2 rounded hover:text-red-600 ${
+              isActive ? 'text-red-600 font-medium' : ''
             }`
           }
           onClick={() => setMenuOpen(false)}

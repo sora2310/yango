@@ -12,29 +12,11 @@ interface Reward {
   imgUrl: string;
 }
 
-// Catálogo de recompensas de ejemplo. En el futuro puede cargarse desde Firestore.
+// Catálogo de recompensas de ejemplo (puede venir de Firestore).
 const rewards: Reward[] = [
-  {
-    id: 'reward1',
-    titulo: 'Cupón de descuento',
-    puntos: 100,
-    descripcion: '5% de descuento en tu próxima compra',
-    imgUrl: '/images/cupon.png',
-  },
-  {
-    id: 'reward2',
-    titulo: 'Tarjeta de gasolina',
-    puntos: 200,
-    descripcion: 'Tarjeta de gasolina por $50',
-    imgUrl: '/images/gasolina.png',
-  },
-  {
-    id: 'reward3',
-    titulo: 'Merchandising Yango',
-    puntos: 300,
-    descripcion: 'Paquete de merchandising de la marca',
-    imgUrl: '/images/merch.png',
-  },
+  { id: 'reward1', titulo: 'Cupón de descuento', puntos: 100, descripcion: '5% de descuento en tu próxima compra', imgUrl: '/images/cupon.png' },
+  { id: 'reward2', titulo: 'Tarjeta de gasolina', puntos: 200, descripcion: 'Tarjeta de gasolina por $50', imgUrl: '/images/gasolina.png' },
+  { id: 'reward3', titulo: 'Merchandising Yango', puntos: 300, descripcion: 'Paquete de merchandising de la marca', imgUrl: '/images/merch.png' },
 ];
 
 function PuntosCambio() {
@@ -63,7 +45,7 @@ function PuntosCambio() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-900 text-white">
+    <div className="flex min-h-screen bg-gray-50 text-gray-800">
       <Sidebar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <div className="flex-1">
         <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
@@ -77,7 +59,7 @@ function PuntosCambio() {
             {rewards.map((reward) => (
               <div
                 key={reward.id}
-                className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col items-center shadow-md"
+                className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center shadow-md"
               >
                 <img src={reward.imgUrl} alt={reward.titulo} className="w-24 h-24 object-contain mb-2" />
                 <h3 className="text-lg font-semibold mb-1 text-center">{reward.titulo}</h3>
@@ -86,7 +68,7 @@ function PuntosCambio() {
                 {totalPoints >= reward.puntos ? (
                   <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Reclamar</button>
                 ) : (
-                  <button className="bg-gray-500 text-white px-4 py-2 rounded" disabled>
+                  <button className="bg-gray-300 text-gray-600 px-4 py-2 rounded" disabled>
                     Insuficientes
                   </button>
                 )}

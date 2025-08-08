@@ -22,7 +22,7 @@ function MiCuenta() {
         const docRef = doc(db, 'usuarios', uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          const data = docSnap.data();
+          const data = docSnap.data() as any;
           setFormData({
             nombre: data.nombre || '',
             apellido: data.apellido || '',
@@ -46,13 +46,13 @@ function MiCuenta() {
     const uid = localStorage.getItem('uid');
     if (uid) {
       const docRef = doc(db, 'usuarios', uid);
-      await updateDoc(docRef, formData);
+      await updateDoc(docRef, formData as any);
     }
     setSaving(false);
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-900 text-white">
+    <div className="flex min-h-screen bg-gray-50 text-gray-800">
       <Sidebar menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <div className="flex-1">
         <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
@@ -65,7 +65,7 @@ function MiCuenta() {
               placeholder="Nombre"
               value={formData.nombre}
               onChange={handleInputChange}
-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
+              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
               required
             />
             <input
@@ -74,7 +74,7 @@ function MiCuenta() {
               placeholder="Apellido"
               value={formData.apellido}
               onChange={handleInputChange}
-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
+              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
               required
             />
             <input
@@ -83,7 +83,7 @@ function MiCuenta() {
               placeholder="Teléfono"
               value={formData.telefono}
               onChange={handleInputChange}
-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
+              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
               required
             />
             <input
@@ -92,7 +92,7 @@ function MiCuenta() {
               placeholder="Dirección"
               value={formData.direccion}
               onChange={handleInputChange}
-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
+              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
               required
             />
             <input
@@ -101,7 +101,7 @@ function MiCuenta() {
               placeholder="Email"
               value={formData.email}
               onChange={handleInputChange}
-              className="border border-gray-700 bg-gray-800 p-3 rounded focus:outline-none"
+              className="border border-gray-300 bg-white p-3 rounded focus:outline-none"
               required
             />
             <button
